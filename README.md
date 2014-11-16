@@ -46,8 +46,27 @@ All the classes contain PHP-doc documentation, so for now, take a look at the co
 				'-dissolve', 50,
 				'-gravity', 'southeast',
 				'-geometry', '+10+10',
-				'-resize', '800x800>',
-				'-quality', 75,
+			)
+			, 'watermark.png'
+			, 'output.jpg'
+		);
+
+		// Method chaining: Make image fit in 300x300 box and strip all profiles, then apply watermark and save as output.jpg
+		$m->convert(
+			array(
+				'-resize', '300x300>',
+				'-filter',	'Sinc',
+				'-blur',	1,
+				'+profile', '*',	// removes any ICM, EXIF, IPTC profiles that may be present
+			),
+			null,	// no file means store data internally
+			'PNG'	// for lossless resize
+		)
+		->composite(
+			array(
+				'-dissolve', 50,
+				'-gravity', 'southeast',
+				'-geometry', '+10+10',
 			)
 			, 'watermark.png'
 			, 'output.jpg'
@@ -66,7 +85,6 @@ All the classes contain PHP-doc documentation, so for now, take a look at the co
 			->data();
 		print "width=$width, height=$height, magic=$magic\n"; // Magic should be GIF now
 		file_put_contents('output.gif', $rawdata);
-
 
 ### Licensing
 All of the code in this library is licensed under the MIT license as included in the LICENSE file

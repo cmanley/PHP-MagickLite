@@ -9,7 +9,7 @@
 *
 * @author    Craig Manley
 * @copyright Copyright © 2014, Craig Manley (craigmanley.com). All rights reserved.
-* @version   $Id: MagickLite.class.php,v 1.1 2014/11/16 02:08:17 cmanley Exp $
+* @version   $Id: MagickLite.class.php,v 1.2 2014/11/16 22:11:01 cmanley Exp $
 * @package   cmanley
 */
 
@@ -206,8 +206,6 @@ class MagickLite {
 	*			'-dissolve', 30,
 	*			'-gravity', 'southeast',
 	*			'-geometry', '+10+10',
-	*			'-resize', '1000x1000>',
-	*			'-quality', 75,
 	*		)
 	*		, 'watermark.png'
 	*		, 'out.jpg'
