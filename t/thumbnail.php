@@ -3,7 +3,7 @@
 * Test script for MagickLite class.
 *
 * @author   Craig Manley
-* @version  $Id: thumbnail.php,v 1.1 2014/11/16 02:08:17 cmanley Exp $
+* @version  $Id: thumbnail.php,v 1.2 2014/11/16 22:22:44 cmanley Exp $
 * @package  cmanley
 */
 require_once(__DIR__ . '/../lib/MagickLite.class.php');
@@ -26,8 +26,6 @@ $m->convert(
 	array(
 		'-resize', '100x100>',
 		'-quality', 80,
-		'-filter',	'Sinc',
-		'-blur',	1,
 		'+profile', '*',	// removes any ICM, EXIF, IPTC profiles that may be present
 	)
 	, 'thumbnail.jpg'

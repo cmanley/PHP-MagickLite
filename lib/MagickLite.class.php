@@ -9,7 +9,7 @@
 *
 * @author    Craig Manley
 * @copyright Copyright © 2014, Craig Manley (craigmanley.com). All rights reserved.
-* @version   $Id: MagickLite.class.php,v 1.2 2014/11/16 22:11:01 cmanley Exp $
+* @version   $Id: MagickLite.class.php,v 1.3 2014/11/16 22:22:44 cmanley Exp $
 * @package   cmanley
 */
 
@@ -271,9 +271,7 @@ class MagickLite {
 	*	$m->convert(
 	*		array(
 	*			'-resize', '100x100>',
-	*			'-quality', 90,			// JPEG quality
-	*			'-filter',	'Sinc',
-	*			'-blur',	1,
+	*			'-quality', 90,
 	*			'+profile', '*',		// removes any ICM, EXIF, IPTC profiles that may be present
 	*		)
 	*		, 'out.jpg'

@@ -10,6 +10,7 @@ Method chaining is supported.
 
 ### Usage:
 All the classes contain PHP-doc documentation, so for now, take a look at the code of MagicLite.class.php or one of the test/example scripts in the t subdirectory.
+All options can be find in the GraphicsMagick documentation here: http://www.graphicsmagick.org/GraphicsMagick.html
 
 **Example:**
 
@@ -32,9 +33,7 @@ All the classes contain PHP-doc documentation, so for now, take a look at the co
 		$m->convert(
 			array(
 				'-resize', '100x100>',
-				'-quality', 80,
-				'-filter',	'Sinc',
-				'-blur',	1,
+				'-quality', 80,		// alternative: '-define', 'jpeg:preserve-settings',
 				'+profile', '*',	// removes any ICM, EXIF, IPTC profiles that may be present
 			)
 			, 'thumbnail.jpg'
@@ -55,8 +54,6 @@ All the classes contain PHP-doc documentation, so for now, take a look at the co
 		$m->convert(
 			array(
 				'-resize', '300x300>',
-				'-filter',	'Sinc',
-				'-blur',	1,
 				'+profile', '*',	// removes any ICM, EXIF, IPTC profiles that may be present
 			),
 			null,	// no file means store data internally
