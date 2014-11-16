@@ -6,6 +6,7 @@ Method chaining is supported.
 
 ### Requirements:
 *  PHP 5.3.0 or newer
+*  Either the GraphicsMagick CLI, or the ImageMagick CLI, or both.
 
 ### Usage:
 All the classes contain PHP-doc documentation, so for now, take a look at the code of MagicLite.class.php or one of the test/example scripts in the t subdirectory.
