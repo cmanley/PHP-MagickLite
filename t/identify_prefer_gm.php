@@ -3,7 +3,7 @@
 * Test script for MagickLite class.
 *
 * @author   Craig Manley
-* @version  $Id: identify.php,v 1.2 2017/02/26 15:25:52 cmanley Exp $
+* @version  $Id: identify_prefer_gm.php,v 1.1 2017/02/26 15:25:52 cmanley Exp $
 * @package  cmanley
 */
 require_once(__DIR__ . '/../lib/MagickLite.class.php');
@@ -18,7 +18,7 @@ $file = $argv[1];
 
 $m = new MagickLite($file, array(
 	'debug'		=> true,
-	//'prefer'	=> 'im',	// Enable this if you prefer ImageMagick over GraphicsMagick. Detection of installed CLI is automatic, so this is not required.
+	'prefer'	=> 'gm',	// Enable this if you prefer GraphicsMagick (the default choice anyway).
 ));
 
 // Get image info

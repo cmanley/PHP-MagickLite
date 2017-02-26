@@ -9,7 +9,7 @@
 *
 * @author    Craig Manley
 * @copyright Copyright © 2014, Craig Manley (craigmanley.com). All rights reserved.
-* @version   $Id: MagickLite.class.php,v 1.4 2017/02/26 14:53:47 cmanley Exp $
+* @version   $Id: MagickLite.class.php,v 1.5 2017/02/26 15:25:52 cmanley Exp $
 * @package   cmanley
 */
 
@@ -83,16 +83,22 @@ class MagickLite {
 			if (static::_check_exists_gm()) {
 				$this->use_gm = true;
 			}
-			elseif (static::_check_exists_im()) {
-				$this->use_gm = false;
+			else {
+				$this->debug && error_log(__METHOD__ . ' Preferred GraphicsMagick not found');
+				if (static::_check_exists_im()) {
+					$this->use_gm = false;
+				}
 			}
 		}
 		else {
 			if (static::_check_exists_im()) {
 				$this->use_gm = false;
 			}
-			elseif (static::_check_exists_gm()) {
-				$this->use_gm = true;
+			else {
+				$this->debug && error_log(__METHOD__ . ' Preferred ImageMagick not found');
+				if (static::_check_exists_gm()) {
+					$this->use_gm = true;
+				}
 			}
 		}
 		if (is_null($this->use_gm)) {
@@ -111,7 +117,7 @@ class MagickLite {
 		if (is_null(static::$found_gm)) {
 			$out = null;
 			$rc = null;
-			$cmd = exec('which gm', $out, $rc);
+			$cmd = exec('gm -version >/dev/null 2>&1', $out, $rc);
 			static::$found_gm = $rc == 0;
 		}
 		return static::$found_gm;
@@ -127,7 +133,7 @@ class MagickLite {
 		if (is_null(static::$found_im)) {
 			$out = null;
 			$rc = null;
-			$cmd = exec('which identify', $out, $rc);
+			$cmd = exec('identify -version >/dev/null 2>&1', $out, $rc);
 			static::$found_im = $rc == 0;
 		}
 		return static::$found_im;
@@ -140,8 +146,8 @@ class MagickLite {
 	* @param string $cmd (don't escape)
 	* @param array $args array of arguments, if any (don't escape)
 	* @param string|null $stdin this is piped into the process
-	* @param string &$stdout receives the processes STDOUT.
-	* @param string &$stderr receives the processes STDERR.
+	* @param string &$stdout receives the STDOUT.
+	* @param string &$stderr receives the STDERR.
 	* @return void
 	*/
 	protected function _proc_exec($cmd, array $args, $stdin = null, &$stdout, &$stderr) {
