@@ -9,7 +9,7 @@
 *
 * @author    Craig Manley
 * @copyright Copyright © 2014, Craig Manley (craigmanley.com). All rights reserved.
-* @version   $Id: MagickLite.class.php,v 1.3 2014/11/16 22:22:44 cmanley Exp $
+* @version   $Id: MagickLite.class.php,v 1.4 2017/02/26 14:53:47 cmanley Exp $
 * @package   cmanley
 */
 
@@ -72,8 +72,8 @@ class MagickLite {
 			$this->debug = @$options['debug'];
 			if (@$options['prefer']) {
 				$prefer = $options['prefer'];
-				if (!(is_string($prefer) && preg_match('/^(?:pm|im)$/', $prefer))) {
-					throw new InvalidArgumentException('Invalid "prefer" option (must be one of "pm" or "im").');
+				if (!(is_string($prefer) && preg_match('/^(?:gm|im)$/', $prefer))) {
+					throw new InvalidArgumentException('Invalid "prefer" option (must be one of "gm" or "im").');
 				}
 			}
 		}
