@@ -9,7 +9,7 @@
 *
 * @author    Craig Manley
 * @copyright Copyright © 2014, Craig Manley (craigmanley.com). All rights reserved.
-* @version   $Id: MagickLite.class.php,v 1.5 2017/02/26 15:25:52 cmanley Exp $
+* @version   $Id: MagickLite.class.php,v 1.6 2021/08/28 18:06:17 cmanley Exp $
 * @package   cmanley
 */
 
@@ -392,6 +392,17 @@ class MagickLite {
 			return file_get_contents($this->file);
 		}
 		return null;
+	}
+
+
+	/**
+	* Returns the file this object operates on.
+	* Not chainable.
+	*
+	* @return string|null
+	*/
+	public function getFile() {
+		return $this->file;
 	}
 
 }
