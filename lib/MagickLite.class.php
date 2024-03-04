@@ -5,11 +5,13 @@
 * Dependencies:
 * <pre>
 * GraphicsMagick OR ImageMagick CLI commands.
+* Alpine packages: graphicsmagick
+* Debian packages: graphicsmagick
 * </pre>
 *
 * @author    Craig Manley
 * @copyright Copyright © 2014, Craig Manley (craigmanley.com). All rights reserved.
-* @version   $Id: MagickLite.class.php,v 1.6 2021/08/28 18:06:17 cmanley Exp $
+* @version   $Id: MagickLite.class.php,v 1.7 2024/02/02 21:45:42 cmanley Exp $
 * @package   cmanley
 */
 
@@ -111,7 +113,7 @@ class MagickLite {
 	/**
 	* Checks if the GraphicsMagick CLI exists.
 	*
-	* @return boolean
+	* @return bool
 	*/
 	protected static function _check_exists_gm() {
 		if (is_null(static::$found_gm)) {
@@ -127,7 +129,7 @@ class MagickLite {
 	/**
 	* Checks if the ImageMagick CLI exists.
 	*
-	* @return boolean
+	* @return bool
 	*/
 	protected static function _check_exists_im() {
 		if (is_null(static::$found_im)) {
@@ -146,11 +148,11 @@ class MagickLite {
 	* @param string $cmd (don't escape)
 	* @param array $args array of arguments, if any (don't escape)
 	* @param string|null $stdin this is piped into the process
-	* @param string &$stdout receives the STDOUT.
-	* @param string &$stderr receives the STDERR.
+	* @param string|null &$stdout receives the STDOUT.
+	* @param string|null &$stderr receives the STDERR.
 	* @return void
 	*/
-	protected function _proc_exec($cmd, array $args, $stdin = null, &$stdout, &$stderr) {
+	protected function _proc_exec($cmd, array $args, string $stdin = null, string &$stdout = null, string &$stderr = null) {
 		$cmd = '(' . escapeshellcmd($cmd) . ' ' . join(' ', array_map(function($arg) { return escapeshellarg($arg); }, $args)) . ') 3>/dev/null; echo $? >&3'; // unreliable proc_close exitcode workaround
 		$this->debug && error_log(__METHOD__ . " $cmd");
 		$descriptors = array(
