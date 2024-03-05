@@ -11,7 +11,7 @@
 *
 * @author    Craig Manley
 * @copyright Copyright © 2014, Craig Manley (craigmanley.com). All rights reserved.
-* @version   $Id: MagickLite.class.php,v 1.7 2024/02/02 21:45:42 cmanley Exp $
+* @version   $Id: MagickLite.class.php,v 1.8 2024/03/04 07:51:52 cmanley Exp $
 * @package   cmanley
 */
 
