@@ -1,30 +1,29 @@
-<?php declare(strict_types=1);
+<?php declare(strict_types = 1);
 /**
-* Contains the MagickLite class.
-*
-* Dependencies:
-* <pre>
-* GraphicsMagick OR ImageMagick CLI commands.
-* Alpine packages: graphicsmagick
-* Debian packages: graphicsmagick
-* </pre>
-*
-* @author    Craig Manley
-* @copyright Copyright © 2014, Craig Manley (craigmanley.com). All rights reserved.
-* @version   $Id: MagickLite.class.php,v 1.9 2026/04/16 14:36:54 cmanley Exp $
-* @package   cmanley
-*/
-
+ * Contains the MagickLite class.
+ *
+ * Dependencies:
+ * <pre>
+ * GraphicsMagick OR ImageMagick CLI commands.
+ * Alpine packages: graphicsmagick
+ * Debian packages: graphicsmagick
+ * </pre>
+ *
+ * @author    Craig Manley
+ * @copyright Copyright © 2014-2026, Craig Manley (craigmanley.com). All rights reserved.
+ * @package   CraigManley
+ */
+namespace CraigManley;
 
 
 
 /**
-* MagickLite class.
-* Lightweight wrapper class for common GraphicsMagick/ImageMagick CLI commands.
-* Method chaining is supported.
-*
-* @package	cmanley
-*/
+ * MagickLite class.
+ * Lightweight wrapper class for common GraphicsMagick/ImageMagick CLI commands.
+ * Method chaining is supported.
+ *
+ * @package CraigManley
+ */
 class MagickLite {
 
 	protected static ?bool $found_gm = null; // cached result of _check_exists_gm()
@@ -38,32 +37,30 @@ class MagickLite {
 	protected ?string $input_magic = null; // format hint prefix (e.g. 'AVIF') when filename has no recognisable extension
 
 	/**
-	* Constructor.
-	*
-	* Supported options:
-	*	debug	- boolean
-	*	prefer	- one of 'gm' (default) or 'im', to indicate your preference for GraphicsMagick or ImageMagick.
-	*	type	- 1st argument refers to a 'file' (default) or 'data'.
-	*
-	* @param string $file_or_data
-	* @param array|null $options
-	*/
-	public function __construct(string $file_or_data, ?array $options = null) {
-		if (!strlen($file_or_data)) {
-			throw new InvalidArgumentException('Invalid or missing file or data in first argument.');
-		}
-		$type = $options['type'] ?? 'file';
-		if (!preg_match('/^(?:file|data)$/', $type)) {
-			throw new InvalidArgumentException('Invalid "type" option (must be one of "file" or "data").');
-		}
-		if ($type === 'file') {
-			if (!file_exists($file_or_data)) {
-				throw new InvalidArgumentException('File not found: ' . (strlen($file_or_data) > 255 ? '(too much data, probably not a file)' : $file_or_data));
+	 * Constructor.
+	 *
+	 * Supported options:
+	 *	debug	- boolean
+	 *	prefer	- one of 'gm' (default) or 'im', to indicate your preference for GraphicsMagick or ImageMagick.
+	 *
+	 * @param string|\SplFileInfo $file_or_data Pass a \SplFileInfo to operate on a file, or a string of raw image data.
+	 * @param array|null          $options
+	 * @throws \InvalidArgumentException
+	 * @throws \RuntimeException
+	 */
+	public function __construct(string|\SplFileInfo $file_or_data, ?array $options = null) {
+		if ($file_or_data instanceof \SplFileInfo) {
+			$path = $file_or_data->getPathname();
+			if (!file_exists($path)) {
+				throw new \InvalidArgumentException("File ($path) not found");
 			}
-			$this->file = $file_or_data;
-			$this->input_magic = static::_detect_input_magic(file_get_contents($file_or_data, false, null, 0, 12) ?: '');
+			$this->file = $path;
+			$this->input_magic = static::_detect_input_magic(file_get_contents($path, false, null, 0, 12) ?: '');
 		}
 		else {
+			if (!strlen($file_or_data)) {
+				throw new \InvalidArgumentException('The data argument must not be empty');
+			}
 			$this->data = $file_or_data;
 			$this->input_magic = static::_detect_input_magic(substr($file_or_data, 0, 12));
 		}
@@ -75,7 +72,7 @@ class MagickLite {
 			if (isset($options['prefer'])) {
 				$prefer = $options['prefer'];
 				if (!preg_match('/^(?:gm|im)$/', $prefer)) {
-					throw new InvalidArgumentException('Invalid "prefer" option (must be one of "gm" or "im").');
+					throw new \InvalidArgumentException('Invalid "prefer" option (must be one of "gm" or "im")');
 				}
 			}
 		}
@@ -104,21 +101,21 @@ class MagickLite {
 			}
 		}
 		if ($this->use_gm === null) {
-			throw new Exception("Unable to locate 'gm' or 'identify' CLI commands");
+			throw new \RuntimeException("Neither one of the 'gm' or 'identify' executables are available");
 		}
 		$this->debug && error_log(__METHOD__ . ' Use ' . ($this->use_gm ? 'GraphicsMagick' : 'ImageMagick'));
 	}
 
 
 	/**
-	* Checks if the GraphicsMagick CLI exists.
-	*
-	* @return bool
-	*/
+	 * Checks if the GraphicsMagick CLI exists.
+	 *
+	 * @return bool
+	 */
 	protected static function _check_exists_gm(): bool {
 		if (static::$found_gm === null) {
 			$out = null;
-			$rc = null;
+			$rc  = null;
 			exec('gm -version >/dev/null 2>&1', $out, $rc);
 			static::$found_gm = $rc === 0;
 		}
@@ -127,14 +124,14 @@ class MagickLite {
 
 
 	/**
-	* Checks if the ImageMagick CLI exists.
-	*
-	* @return bool
-	*/
+	 * Checks if the ImageMagick CLI exists.
+	 *
+	 * @return bool
+	 */
 	protected static function _check_exists_im(): bool {
 		if (static::$found_im === null) {
 			$out = null;
-			$rc = null;
+			$rc  = null;
 			exec('identify -version >/dev/null 2>&1', $out, $rc);
 			static::$found_im = $rc === 0;
 		}
@@ -143,12 +140,12 @@ class MagickLite {
 
 
 	/**
-	* Detects the image format from the first bytes when it cannot be inferred from the filename.
-	* Returns a format magic string (e.g. 'AVIF') to use as a CLI format prefix, or null if not needed.
-	*
-	* @param string $header First bytes of the image data (12 bytes is enough).
-	* @return string|null
-	*/
+	 * Detects the image format from the first bytes when it cannot be inferred from the filename.
+	 * Returns a format magic string (e.g. 'AVIF') to use as a CLI format prefix, or null if not needed.
+	 *
+	 * @param string $header First bytes of the image data (12 bytes is enough).
+	 * @return string|null
+	 */
 	protected static function _detect_input_magic(string $header): ?string {
 		if (strlen($header) >= 12) {
 			// AVIF/HEIF ISO Base Media File: bytes 4-7 = 'ftyp', bytes 8-11 = brand
@@ -161,15 +158,16 @@ class MagickLite {
 
 
 	/**
-	* Executes the given command with the given arguments.
-	*
-	* @param string $cmd Command name (don't escape).
-	* @param array $args Array of arguments, if any (don't escape).
-	* @param string|null $stdin Piped into the process.
-	* @param string|null &$stdout Receives STDOUT.
-	* @param string|null &$stderr Receives STDERR.
-	* @return void
-	*/
+	 * Executes the given command with the given arguments.
+	 *
+	 * @param string      $cmd    Command name (don't escape).
+	 * @param array       $args   Array of arguments, if any (don't escape).
+	 * @param string|null $stdin  Piped into the process.
+	 * @param string|null &$stdout Receives STDOUT.
+	 * @param string|null &$stderr Receives STDERR.
+	 * @return void
+	 * @throws \RuntimeException
+	 */
 	protected function _proc_exec(string $cmd, array $args, ?string $stdin, ?string &$stdout, ?string &$stderr): void {
 		$shell_cmd = '(' . escapeshellcmd($cmd) . ' ' . implode(' ', array_map(fn($arg) => escapeshellarg((string) $arg), $args)) . ') 3>/dev/null; echo $? >&3'; // unreliable proc_close exitcode workaround
 		$this->debug && error_log(__METHOD__ . " $shell_cmd");
@@ -181,7 +179,7 @@ class MagickLite {
 		];
 		$process = proc_open($shell_cmd, $descriptors, $pipes);
 		if (!is_resource($process)) {
-			throw new Exception("Failed to open process '$shell_cmd'.\n");
+			throw new \RuntimeException("Failed to open process '$shell_cmd'");
 		}
 		// $pipes now looks like this:
 		// 0 => writeable handle connected to child stdin
@@ -210,56 +208,57 @@ class MagickLite {
 			$rc = (int) $matches[1];
 		}
 		if ($rc !== 0) {  // 0 is success
-			$e = "Bad exit code $rc from command '$shell_cmd'";
-			$e .= ($stderr !== null && strlen($stderr)) ? " and this error output: $stderr" : '.';
-			throw new Exception($e);
+			$e = "Error exit code $rc from command ($shell_cmd)";
+			if ($stderr !== null && strlen($stderr)) {
+				$e .= " with this stderr: $stderr";
+			}
+			throw new \RuntimeException($e);
 		}
 	}
 
 
 	/**
-	* Composite images together.
-	* See also: http://www.graphicsmagick.org/composite.html
-	* Example placing a watermark over an image:
-	* <pre>
-	*	$m = new MagickLite('input.jpg');
-	*	$m->composite(
-	*		array(
-	*			'-dissolve', 30,
-	*			'-gravity', 'southeast',
-	*			'-geometry', '+10+10',
-	*		)
-	*		, 'watermark.png'
-	*		, 'out.jpg'
-	*	);
-	* </pre>
-	*
-	* @param array $options As supported by the composite CLI command (don't escape).
-	* @param string $change_image The file containing the changes (typically a watermark).
-	* @param string|null $output_file Optional. If not given, the result is stored internally.
-	* @param string|null $output_magic Optional magic of output if it cannot be deduced from the file name.
-	* @return static
-	*/
+	 * Composite images together.
+	 * See also: http://www.graphicsmagick.org/composite.html
+	 * Example placing a watermark over an image:
+	 * <pre>
+	 *	$m = new MagickLite('input.jpg');
+	 *	$m->composite(
+	 *		[
+	 *			'-dissolve', 30,
+	 *			'-gravity', 'southeast',
+	 *			'-geometry', '+10+10',
+	 *		]
+	 *		, 'watermark.png'
+	 *		, 'out.jpg'
+	 *	);
+	 * </pre>
+	 *
+	 * @param array       $options      As supported by the composite CLI command (don't escape).
+	 * @param string      $change_image The file containing the changes (typically a watermark).
+	 * @param string|null $output_file  Optional. If not given, the result is stored internally.
+	 * @param string|null $output_magic Optional magic of output if it cannot be deduced from the file name.
+	 * @return static
+	 * @throws \InvalidArgumentException
+	 * @throws \RuntimeException
+	 */
 	public function composite(array $options, string $change_image, ?string $output_file = null, ?string $output_magic = null): static {
 		if (!file_exists($change_image)) {
-			throw new InvalidArgumentException("Change image file not found: '$change_image'");
+			throw new \InvalidArgumentException("Change image file not found: '$change_image'");
 		}
 
-		$cmd = $this->use_gm ? 'gm' : 'composite';
+		$cmd  = $this->use_gm ? 'gm' : 'composite';
 		$args = $this->use_gm ? ['composite'] : [];
 		$args = array_merge($args, $options);
-		$args []= $change_image;
+		$args[] = $change_image;
 		if ($this->file) {
-			$args []= $this->input_magic ? $this->input_magic . ':' . $this->file : $this->file;
+			$args[] = $this->input_magic ? $this->input_magic . ':' . $this->file : $this->file;
 		}
 		else {
-			#$args []= $this->use_gm
-			#	? '-'      // GraphicsMagick can't parse frame number from arguments: https://sourceforge.net/tracker/?func=detail&aid=3385967&group_id=73485&atid=537937
-			#	: '-[0]';
-			$args []= '-[0]';
+			$args[] = '-[0]';
 		}
 		if ($output_file && ($output_file !== '-')) {
-			$args []= $output_magic ? $output_magic . ':' . $output_file : $output_file;
+			$args[] = $output_magic ? $output_magic . ':' . $output_file : $output_file;
 		}
 		else {
 			$args[] = $output_magic ? $output_magic . ':-' : '-';
@@ -280,37 +279,35 @@ class MagickLite {
 
 
 	/**
-	* Converts the image.
-	* See also: http://www.graphicsmagick.org/convert.html
-	* Example to shrink an image to fit within the given dimensions
-	* <pre>
-	*	$m = new MagickLite('input.jpg');
-	*	$m->convert(
-	*		[
-	*			'-resize', '100x100>',
-	*			'-quality', 90,
-	*			'+profile', '*',		// removes any ICM, EXIF, IPTC profiles that may be present
-	*		]
-	*		, 'out.jpg'
-	*	);
-	* </pre>
-	*
-	* @param array $options As supported by the convert CLI command (don't escape).
-	* @param string|null $output_file Optional. If not given, the result is stored internally.
-	* @param string|null $output_magic Optional magic of output if it cannot be deduced from the file name.
-	* @return static
-	*/
+	 * Converts the image.
+	 * See also: http://www.graphicsmagick.org/convert.html
+	 * Example to shrink an image to fit within the given dimensions:
+	 * <pre>
+	 *	$m = new MagickLite('input.jpg');
+	 *	$m->convert(
+	 *		[
+	 *			'-resize', '100x100>',
+	 *			'-quality', 90,
+	 *			'+profile', '*',		// removes any ICM, EXIF, IPTC profiles that may be present
+	 *		]
+	 *		, 'out.jpg'
+	 *	);
+	 * </pre>
+	 *
+	 * @param array       $options      As supported by the convert CLI command (don't escape).
+	 * @param string|null $output_file  Optional. If not given, the result is stored internally.
+	 * @param string|null $output_magic Optional magic of output if it cannot be deduced from the file name.
+	 * @return static
+	 * @throws \RuntimeException
+	 */
 	public function convert(array $options, ?string $output_file = null, ?string $output_magic = null): static {
-		$cmd = $this->use_gm ? 'gm' : 'convert';
+		$cmd  = $this->use_gm ? 'gm' : 'convert';
 		$args = $this->use_gm ? ['convert'] : [];
 		if ($this->file) {
 			$args[] = $this->input_magic ? $this->input_magic . ':' . $this->file : $this->file;
 		}
 		else {
-			#$args []= $this->use_gm
-			#	? '-'      // GraphicsMagick can't parse frame number from arguments: https://sourceforge.net/tracker/?func=detail&aid=3385967&group_id=73485&atid=537937
-			#	: '-[0]';
-			$args []= '-[0]';
+			$args[] = '-[0]';
 		}
 		$args = array_merge($args, $options);
 		if ($output_file && ($output_file !== '-')) {
@@ -335,14 +332,15 @@ class MagickLite {
 
 
 	/**
-	* Identifies the image.
-	* See also: http://www.graphicsmagick.org/identify.html
-	*
-	* @param int|null &$width Optional reference that receives the width.
-	* @param int|null &$height Optional reference that receives the height.
-	* @param string|null &$magic Optional reference that receives the magic.
-	* @return static
-	*/
+	 * Identifies the image.
+	 * See also: http://www.graphicsmagick.org/identify.html
+	 *
+	 * @param int|null    &$width  Optional reference that receives the width.
+	 * @param int|null    &$height Optional reference that receives the height.
+	 * @param string|null &$magic  Optional reference that receives the magic.
+	 * @return static
+	 * @throws \RuntimeException
+	 */
 	public function identify(?int &$width = null, ?int &$height = null, ?string &$magic = null): static {
 		if ($this->identify_cache) {
 			$width  = $this->identify_cache['width'];
@@ -350,7 +348,7 @@ class MagickLite {
 			$magic  = $this->identify_cache['magic'];
 		}
 		else {
-			$cmd = $this->use_gm ? 'gm' : 'identify';
+			$cmd  = $this->use_gm ? 'gm' : 'identify';
 			$args = $this->use_gm ? ['identify'] : [];
 			$args[] = '-format';
 			$args[] = '%w %h %m';	// http://www.graphicsmagick.org/GraphicsMagick.html#details-format
@@ -358,10 +356,7 @@ class MagickLite {
 				$args[] = $this->input_magic ? $this->input_magic . ':' . $this->file : $this->file;
 			}
 			else {
-				#$args []= $this->use_gm
-				#	? '-'      // GraphicsMagick can't parse frame number from arguments: https://sourceforge.net/tracker/?func=detail&aid=3385967&group_id=73485&atid=537937
-				#	: '-[0]';
-				$args []= '-[0]';
+				$args[] = '-[0]';
 			}
 
 			$stdout = null;
@@ -370,7 +365,11 @@ class MagickLite {
 
 			// Parse STDOUT.
 			if (!preg_match($this->use_gm ? '/^(\d{1,5})(?: \d+)* (\d{1,5}) (\b.+\b)$/' : '/^(\d{1,5}) (\d{1,5}) (\b.+\b)$/', $stdout, $matches)) {
-				throw new Exception("Failed to parse output (\"$stdout\") of command \"$cmd\"; stderr=$stderr");
+				$e = "Failed to parse stdout ($stdout) of command ($cmd)";
+				if ($stderr !== null && strlen($stderr)) {
+					$e .= " with this stderr: $stderr";
+				}
+				throw new \RuntimeException($e);
 			}
 			$width  = (int) $matches[1];
 			$height = (int) $matches[2];
@@ -386,22 +385,22 @@ class MagickLite {
 
 
 	/**
-	* Returns the internal image data if any.
-	* Not chainable.
-	*
-	* @return string|null
-	*/
+	 * Returns the internal image data if any.
+	 * Not chainable.
+	 *
+	 * @return string|null
+	 */
 	public function data(): ?string {
 		return $this->data ?? ($this->file ? file_get_contents($this->file) : null);
 	}
 
 
 	/**
-	* Returns the file this object operates on.
-	* Not chainable.
-	*
-	* @return string|null
-	*/
+	 * Returns the file this object operates on.
+	 * Not chainable.
+	 *
+	 * @return string|null
+	 */
 	public function getFile(): ?string {
 		return $this->file;
 	}

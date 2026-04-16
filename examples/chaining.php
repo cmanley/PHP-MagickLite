@@ -3,20 +3,15 @@
 * Test script for MagickLite class.
 *
 * @author   Craig Manley
-* @version  $Id: chaining.php,v 1.2 2026/04/16 14:36:54 cmanley Exp $
 * @package  cmanley
 */
-require_once(__DIR__ . '/../lib/MagickLite.class.php');
+require_once(__DIR__ . '/../vendor/autoload.php');
+use CraigManley\MagickLite;
 
-// CLI options
-if ($argc != 2) {
-	error_log('You must specify an image file name as argument!');
-	exit(1);
-}
-$file = $argv[1];
+$file = $argv[1] ?? __DIR__ . '/sample.avif';
 
 
-$m = new MagickLite($file, [
+$m = new MagickLite(new \SplFileInfo($file), [
 	'debug'	=> true,
 ]);
 

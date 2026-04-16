@@ -3,10 +3,10 @@
 * Test script for MagickLite class.
 *
 * @author   Craig Manley
-* @version  $Id: watermark.php,v 1.3 2026/04/16 14:36:54 cmanley Exp $
 * @package  cmanley
 */
-require_once(__DIR__ . '/../lib/MagickLite.class.php');
+require_once(__DIR__ . '/../vendor/autoload.php');
+use CraigManley\MagickLite;
 
 // CLI options
 if ($argc != 3) {
@@ -17,7 +17,7 @@ $file = $argv[1];
 $watermark = $argv[2];
 
 
-$m = new MagickLite($file, [
+$m = new MagickLite(new \SplFileInfo($file), [
 	'debug'	=> true,
 ]);
 
