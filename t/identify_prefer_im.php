@@ -3,7 +3,7 @@
 * Test script for MagickLite class.
 *
 * @author   Craig Manley
-* @version  $Id: identify_prefer_im.php,v 1.1 2017/02/26 15:25:52 cmanley Exp $
+* @version  $Id: identify_prefer_im.php,v 1.2 2026/04/16 14:36:54 cmanley Exp $
 * @package  cmanley
 */
 require_once(__DIR__ . '/../lib/MagickLite.class.php');
@@ -16,10 +16,10 @@ if ($argc != 2) {
 $file = $argv[1];
 
 
-$m = new MagickLite($file, array(
+$m = new MagickLite($file, [
 	'debug'		=> true,
 	'prefer'	=> 'im',	// Prefer ImageMagick over GraphicsMagick.
-));
+]);
 
 // Get image info
 $width; $height; $magic;
