@@ -34,7 +34,7 @@ class MagickLite {
 	protected bool $debug = false;
 	protected ?array $identify_cache = null;
 	protected ?bool $use_gm = null;
-	protected ?string $input_magic = null; // format hint prefix (e.g. 'AVIF') when filename has no recognisable extension
+	protected ?string $input_magic = null; // format hint prefix (e.g. 'AVIF') when filename has no recognisable extension; so far it only seems necessary for animated AVIF images.
 
 	/**
 	 * Constructor.
@@ -49,6 +49,17 @@ class MagickLite {
 	 * @throws \RuntimeException
 	 */
 	public function __construct(string|\SplFileInfo $file_or_data, ?array $options = null) {
+		if ($options) {
+			$this->debug = (bool) ($options['debug'] ?? false);
+			if (isset($options['prefer'])) {
+				$prefer = $options['prefer'];
+				$allowed_prefer_values = ['gm', 'im'];
+				if (!in_array($prefer, $allowed_prefer_values)) {
+					throw new \InvalidArgumentException("Invalid prefer option ($prefer) must be one of " . join(', ', $allowed_prefer_values));
+				}
+			}
+		}
+
 		if ($file_or_data instanceof \SplFileInfo) {
 			$path = $file_or_data->getPathname();
 			if (!file_exists($path)) {
@@ -56,6 +67,7 @@ class MagickLite {
 			}
 			$this->file = $path;
 			$this->input_magic = static::_detect_input_magic(file_get_contents($path, false, null, 0, 12) ?: '');
+			$this->debug && error_log(__METHOD__ . ' $file_or_data is a file (' . $path . ') with magic=' . ($this->input_magic ?? 'null'));
 		}
 		else {
 			if (!strlen($file_or_data)) {
@@ -63,21 +75,12 @@ class MagickLite {
 			}
 			$this->data = $file_or_data;
 			$this->input_magic = static::_detect_input_magic(substr($file_or_data, 0, 12));
+
+			$this->debug && error_log(__METHOD__ . ' $file_or_data is ' . strlen($file_or_data) . ' byte string with magic=' . ($this->input_magic ?? 'null'));
 		}
 
+		// Set preferred executable, if available.
 		$prefer = 'gm';
-
-		if ($options) {
-			$this->debug = (bool) ($options['debug'] ?? false);
-			if (isset($options['prefer'])) {
-				$prefer = $options['prefer'];
-				if (!preg_match('/^(?:gm|im)$/', $prefer)) {
-					throw new \InvalidArgumentException('Invalid "prefer" option (must be one of "gm" or "im")');
-				}
-			}
-		}
-
-		// Set preferred CLI, if available.
 		if ($prefer === 'gm') {
 			if (static::_check_exists_gm()) {
 				$this->use_gm = true;
@@ -159,56 +162,46 @@ class MagickLite {
 
 	/**
 	 * Executes the given command with the given arguments.
+	 * Throws on non-zero exit code.
 	 *
-	 * @param string      $cmd    Command name (don't escape).
-	 * @param array       $args   Array of arguments, if any (don't escape).
-	 * @param string|null $stdin  Piped into the process.
+	 * @param array       $command Command and arguments as unescaped strings, e.g. ['gm', 'convert', '-resize', '100x100', 'in.jpg', 'out.jpg'].
+	 * @param string|null $stdin   Optional data to pipe into the process.
 	 * @param string|null &$stdout Receives STDOUT.
 	 * @param string|null &$stderr Receives STDERR.
 	 * @return void
 	 * @throws \RuntimeException
 	 */
-	protected function _proc_exec(string $cmd, array $args, ?string $stdin, ?string &$stdout, ?string &$stderr): void {
-		$shell_cmd = '(' . escapeshellcmd($cmd) . ' ' . implode(' ', array_map(fn($arg) => escapeshellarg((string) $arg), $args)) . ') 3>/dev/null; echo $? >&3'; // unreliable proc_close exitcode workaround
-		$this->debug && error_log(__METHOD__ . " $shell_cmd");
-		$descriptors = [
-			0 => ['pipe', 'r'],	// stdin is a pipe that the child will read from
-			1 => ['pipe', 'w'],	// stdout is a pipe that the child will write to
-			2 => ['pipe', 'w'],	// stderr is a pipe that the child will write to
-			3 => ['pipe', 'w'],	// unreliable proc_close exitcode workaround
-		];
-		$process = proc_open($shell_cmd, $descriptors, $pipes);
-		if (!is_resource($process)) {
-			throw new \RuntimeException("Failed to open process '$shell_cmd'");
+	protected function _proc_exec(array $command, ?string $stdin, ?string &$stdout, ?string &$stderr): void {
+		$cmd = escapeshellcmd(array_shift($command));
+		if ($command) {
+			$cmd .= ' ' . implode(' ', array_map(fn($arg) => escapeshellarg((string) $arg), $command));
 		}
-		// $pipes now looks like this:
-		// 0 => writeable handle connected to child stdin
-		// 1 => readable handle connected to child stdout
-		// 2 => readable handle connected to child stderr
-		// 3 => readable handle connected to child exitcode
-		if ($stdin) {
+		$this->debug && error_log(__METHOD__ . " $cmd");
+		$descriptors = [
+			0 => ['pipe', 'r'],
+			1 => ['pipe', 'w'],
+			2 => ['pipe', 'w'],
+		];
+		$process = proc_open($cmd, $descriptors, $pipes);
+		if (!is_resource($process)) {
+			throw new \RuntimeException("Failed to open process '$cmd'");
+		}
+		if ($stdin !== null && strlen($stdin)) {
 			fwrite($pipes[0], $stdin);
 		}
 		fclose($pipes[0]);
-
-		// It is important that you close any pipes before calling proc_close in order to avoid a deadlock.
+		// Close pipes before proc_close to avoid deadlock.
 		$stdout = stream_get_contents($pipes[1]);
 		fclose($pipes[1]);
 		$stderr = stream_get_contents($pipes[2]);
 		fclose($pipes[2]);
-		$exitcode = stream_get_contents($pipes[3]);
-		fclose($pipes[3]);
-
 		$status = proc_get_status($process);
-		$rc = proc_close($process); // will return -1 if PHP was compiled with --enable-sigchild
-		if ($status !== false && !$status['running']) {
+		$rc = proc_close($process); // may return -1 if PHP was compiled with --enable-sigchild
+		if (!$status['running']) { // use proc_get_status exitcode when process already finished
 			$rc = $status['exitcode'];
 		}
-		if (($rc === -1) && preg_match('/^(-?\d+)\s*$/', $exitcode, $matches)) { // unreliable proc_close exitcode workaround
-			$rc = (int) $matches[1];
-		}
-		if ($rc !== 0) {  // 0 is success
-			$e = "Error exit code $rc from command ($shell_cmd)";
+		if ($rc !== 0) {
+			$e = "Error exit code $rc from command ($cmd) given " . strlen($stdin ?? '') . ' bytes of stdin';
 			if ($stderr !== null && strlen($stderr)) {
 				$e .= " with this stderr: $stderr";
 			}
@@ -247,29 +240,31 @@ class MagickLite {
 			throw new \InvalidArgumentException("Change image file not found: '$change_image'");
 		}
 
-		$cmd  = $this->use_gm ? 'gm' : 'composite';
-		$args = $this->use_gm ? ['composite'] : [];
-		$args = array_merge($args, $options);
-		$args[] = $change_image;
-		if ($this->file) {
-			$args[] = $this->input_magic ? $this->input_magic . ':' . $this->file : $this->file;
+		$cmd = $this->use_gm ? ['gm', 'composite'] : ['composite'];
+		$cmd = array_merge($cmd, $options);
+		$cmd []= $change_image;
+
+		$input_file_arg = $this->file ? $this->file : '-';
+		if ($this->input_magic) {
+			$input_file_arg = $this->input_magic . ':' . $input_file_arg;
 		}
-		else {
-			$args[] = '-[0]';
+		$cmd []= $input_file_arg;
+
+		$output_file_arg = $output_file && ($output_file !== '-') ? $output_file : '-';
+		if ($output_magic) {
+			$output_file_arg = $output_magic . ':' . $output_file_arg;
 		}
-		if ($output_file && ($output_file !== '-')) {
-			$args[] = $output_magic ? $output_magic . ':' . $output_file : $output_file;
-		}
-		else {
-			$args[] = $output_magic ? $output_magic . ':-' : '-';
-		}
+		$cmd []= $output_file_arg;
 
 		$stdout = null;
 		$stderr = null;
-		$this->_proc_exec($cmd, $args, $this->data, $stdout, $stderr);
+		$this->_proc_exec($cmd, $this->data, $stdout, $stderr);
 
 		if ($output_file === null || ($output_file === '-')) {
 			$this->identify_cache = null;
+			if ($output_magic) {
+				$this->input_magic = $output_magic;
+			}
 			$this->data = $stdout;
 			$this->file = null;
 		}
@@ -301,28 +296,31 @@ class MagickLite {
 	 * @throws \RuntimeException
 	 */
 	public function convert(array $options, ?string $output_file = null, ?string $output_magic = null): static {
-		$cmd  = $this->use_gm ? 'gm' : 'convert';
-		$args = $this->use_gm ? ['convert'] : [];
-		if ($this->file) {
-			$args[] = $this->input_magic ? $this->input_magic . ':' . $this->file : $this->file;
+		$cmd = $this->use_gm ? ['gm', 'convert'] : ['convert'];
+
+		$input_file_arg = $this->file ? $this->file : '-';
+		if ($this->input_magic) {
+			$input_file_arg = $this->input_magic . ':' . $input_file_arg;
 		}
-		else {
-			$args[] = '-[0]';
-		}
-		$args = array_merge($args, $options);
+		$cmd []= $input_file_arg;
+
+		$cmd = array_merge($cmd, $options);
 		if ($output_file && ($output_file !== '-')) {
-			$args[] = $output_magic ? $output_magic . ':' . $output_file : $output_file;
+			$cmd []= $output_magic ? $output_magic . ':' . $output_file : $output_file;
 		}
 		else {
-			$args[] = $output_magic ? $output_magic . ':-' : '-';
+			$cmd []= $output_magic ? $output_magic . ':-' : '-';
 		}
 
 		$stdout = null;
 		$stderr = null;
-		$this->_proc_exec($cmd, $args, $this->data, $stdout, $stderr);
+		$this->_proc_exec($cmd, $this->data, $stdout, $stderr);
 
 		if ($output_file === null || ($output_file === '-')) {
 			$this->identify_cache = null;
+			if ($output_magic) {
+				$this->input_magic = $output_magic;
+			}
 			$this->data = $stdout;
 			$this->file = null;
 		}
@@ -348,20 +346,19 @@ class MagickLite {
 			$magic  = $this->identify_cache['magic'];
 		}
 		else {
-			$cmd  = $this->use_gm ? 'gm' : 'identify';
-			$args = $this->use_gm ? ['identify'] : [];
-			$args[] = '-format';
-			$args[] = '%w %h %m';	// http://www.graphicsmagick.org/GraphicsMagick.html#details-format
-			if ($this->file) {
-				$args[] = $this->input_magic ? $this->input_magic . ':' . $this->file : $this->file;
+			$cmd  = $this->use_gm ? ['gm', 'identify'] : ['identify'];
+			$cmd []= '-format';
+			$cmd []= '%w %h %m';	// http://www.graphicsmagick.org/GraphicsMagick.html#details-format
+
+			$input_file_arg = $this->file ? $this->file : '-';
+			if ($this->input_magic) {
+				$input_file_arg = $this->input_magic . ':' . $input_file_arg;
 			}
-			else {
-				$args[] = '-[0]';
-			}
+			$cmd []= $input_file_arg;
 
 			$stdout = null;
 			$stderr = null;
-			$this->_proc_exec($cmd, $args, $this->data, $stdout, $stderr);
+			$this->_proc_exec($cmd, $this->data, $stdout, $stderr);
 
 			// Parse STDOUT.
 			if (!preg_match($this->use_gm ? '/^(\d{1,5})(?: \d+)* (\d{1,5}) (\b.+\b)$/' : '/^(\d{1,5}) (\d{1,5}) (\b.+\b)$/', $stdout, $matches)) {
