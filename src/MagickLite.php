@@ -186,15 +186,62 @@ class MagickLite {
 		if (!is_resource($process)) {
 			throw new \RuntimeException("Failed to open process '$cmd'");
 		}
-		if ($stdin !== null && strlen($stdin)) {
-			fwrite($pipes[0], $stdin);
+
+		// Use a stream_select loop to write stdin and read stdout/stderr concurrently,
+		// preventing pipe-buffer deadlocks and EPIPE errors for large payloads.
+		$stdin_buf = ($stdin !== null && strlen($stdin)) ? $stdin : null;
+		$stdin_buf_offset = 0;
+		$stdin_pipe_open = ($stdin_buf !== null);
+		if ($stdin_pipe_open) {
+			stream_set_blocking($pipes[0], false);
 		}
-		fclose($pipes[0]);
-		// Close pipes before proc_close to avoid deadlock.
-		$stdout = stream_get_contents($pipes[1]);
-		fclose($pipes[1]);
-		$stderr = stream_get_contents($pipes[2]);
-		fclose($pipes[2]);
+		else {
+			fclose($pipes[0]);
+		}
+
+		$stdout = '';
+		$stderr = '';
+		$pipes_to_read = [1 => $pipes[1], 2 => $pipes[2]];
+		while ($stdin_pipe_open || $pipes_to_read) {
+			$readable = array_values($pipes_to_read);
+			$writable = $stdin_pipe_open ? [$pipes[0]] : [];
+			$except   = null;
+			if (stream_select($readable, $writable, $except, null) === false) {
+				throw new \RuntimeException("stream_select failed for command ($cmd)");
+			}
+			if ($writable) {
+				$chunk = substr($stdin_buf, $stdin_buf_offset, 8192);
+				error_clear_last();
+				$n = @fwrite($pipes[0], $chunk);
+				if ($n === false || $n === 0) {
+					// EPIPE: child closed stdin early (likely errored). Exit code check below will catch it.
+					fclose($pipes[0]);
+					$stdin_pipe_open = false;
+				}
+				else {
+					$stdin_buf_offset += $n;
+					if ($stdin_buf_offset >= strlen($stdin_buf)) {
+						fclose($pipes[0]);
+						$stdin_pipe_open = false;
+					}
+				}
+			}
+			foreach ($readable as $pipe) {
+				$key = array_search($pipe, $pipes_to_read);
+				$chunk = fread($pipe, 8192);
+				if ($chunk === false || $chunk === '') {
+					fclose($pipe);
+					unset($pipes[$key], $pipes_to_read[$key]);
+				}
+				elseif ($key === 1) {
+					$stdout .= $chunk;
+				}
+				else {
+					$stderr .= $chunk;
+				}
+			}
+		}
+
 		$status = proc_get_status($process);
 		$rc = proc_close($process); // may return -1 if PHP was compiled with --enable-sigchild
 		if (!$status['running']) { // use proc_get_status exitcode when process already finished
@@ -202,7 +249,7 @@ class MagickLite {
 		}
 		if ($rc !== 0) {
 			$e = "Error exit code $rc from command ($cmd) given " . strlen($stdin ?? '') . ' bytes of stdin';
-			if ($stderr !== null && strlen($stderr)) {
+			if (strlen($stderr)) {
 				$e .= " with this stderr: $stderr";
 			}
 			throw new \RuntimeException($e);
